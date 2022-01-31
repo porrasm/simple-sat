@@ -1,7 +1,7 @@
 # simple-sat
 A .Net compatible boolean satisfiability encoder
 
-## Lower level encoding
+## Lower level encoder
 
 This library provides a simple interface (SimpleSAT.Encoding.SATEncoding class) for creating [Boolean Satisfiability Problem (SAT)](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem) formulas. The library also provides a simple solution parser which can parse the output of a standardized SAT solver using the modern solution output format.
 
