@@ -140,8 +140,6 @@ public class SATEncoding {
             throw new Exception("Can't convert to CNF if there are soft clauses. Convert to MaxSAT WCNF form instead.");
         }
 
-        Console.WriteLine($"Converting to CNF with {hardClauses.Count}");
-
         File.Delete(file);
 
         using StreamWriter sw = new StreamWriter(file);
@@ -159,10 +157,7 @@ public class SATEncoding {
     }
 
     private void ConvertToWCNF(string file) {
-        Console.WriteLine($"Converting to WCNF with {hardClauses.Count} hards and {softClauses.Count} softs");
-
         ulong top = GetTop();
-        Console.WriteLine("Top: " + top);
 
         File.Delete(file);
 
