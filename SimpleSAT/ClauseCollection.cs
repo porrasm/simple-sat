@@ -12,13 +12,13 @@ namespace SimpleSAT;
 /// <typeparam name="T">The clause type to use</typeparam>
 public class ClauseCollection<T> {
     #region fields
-    private List<T> clauses = new();
+    private List<Clause<T>> clauses = new();
     private List<SATComment> comments = new();
 
     public int Count => clauses.Count;
     #endregion
 
-    public void Add(T item) => clauses.Add(item);
+    public void Add(Clause<T> item) => clauses.Add(item);
 
     public void Comment(string comment) {
         if (comment.Contains("\n")) {
@@ -27,22 +27,22 @@ public class ClauseCollection<T> {
         comments.Add(new SATComment(comment, clauses.Count));
     }
 
-    public IEnumerable<T> Clauses() {
-        foreach (T clause in clauses) {
+    public IEnumerable<Clause<T>> Clauses() {
+        foreach (Clause<T> clause in clauses) {
             yield return clause;
         }
     }
 
-    internal IEnumerable<string> SATLines(Func<T, string> clauseFormat) {
+    internal IEnumerable<string> GetSATLines(ulong top, Func<Clause<T>, ulong, string> clauseFormat) {
         int commentIndex = 0;
         SATComment comment = GetComment(commentIndex);
 
         for (int i = 0; i < clauses.Count; i++) {
             while (comment.Index == i) {
-                yield return comment.Comment;
+                yield return CNF.CommentLine(comment.Comment);
                 comment = GetComment(++commentIndex);
             }
-            yield return clauseFormat(clauses[i]);
+            yield return clauseFormat(clauses[i], top);
         }
     }
 

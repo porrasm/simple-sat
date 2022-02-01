@@ -9,12 +9,14 @@ namespace SimpleSAT.Proto;
 /// <summary>
 /// A more high level abstraction of <see cref="Encoding.SATEncoding"/>. Contains useful features such as automatic literal indexing and easier variable management but is slightly less efficient.
 /// </summary>
-public class ProtoEncoding {
+public class ProtoEncoding : IEncoding<ProtoLiteral> {
     #region fields
     private List<HashSet<ProtoLiteral>> variables = new();
+    private List<string?> names = new();
 
-    public ClauseCollection<ProtoClause> HardClauses { get; private set; } = new();
-    public ClauseCollection<ProtoClause> SoftClauses { get; private set; } = new();
+    public List<string> Comments { get; } = new();
+    public ClauseCollection<ProtoLiteral> Hard { get; private set; } = new();
+    public ClauseCollection<ProtoLiteral> Soft { get; private set; } = new();
     #endregion
 
     /// <summary>
@@ -22,8 +24,8 @@ public class ProtoEncoding {
     /// </summary>
     /// <returns></returns>
     public IEnumerable<HashSet<ProtoLiteral>> GetVariables() {
-        foreach (var variable in variables) { 
-            yield return variable;
+        foreach (var variableSEt in variables) { 
+            yield return variableSEt;
         }
     }
 
@@ -32,12 +34,13 @@ public class ProtoEncoding {
     /// </summary>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public byte CreateNewVariable() {
+    public byte CreateNewVariable(string? name = null) {
         if (variables.Count >= 127) {
             throw new Exception("Maximum variable count reached");
         }
         byte newIndex = (byte)variables.Count;
         variables.Add(new());
+        names.Add(name);
         return newIndex;
     }
 
@@ -59,6 +62,12 @@ public class ProtoEncoding {
     /// <param name="lit"></param>
     /// <returns></returns>
     public bool Register(ProtoLiteral lit) {
+        if (lit.IsNegation) {
+            throw new Exception("Cannot register a negation of a literal");
+        }
+        if (lit.Literal < 0) {
+            throw new Exception("Literal index cannot be negative");
+        }
         return variables[lit.Variable].Add(lit);
     }
 
@@ -77,7 +86,7 @@ public class ProtoEncoding {
     /// </summary>
     /// <param name="literals"></param>
     public void AddHard(params ProtoLiteral[] literals) {
-        HardClauses.Add(new ProtoClause(0, literals));
+        Hard.Add(new(0, literals));
     }
 
     /// <summary>
@@ -86,7 +95,7 @@ public class ProtoEncoding {
     /// <param name="cost"></param>
     /// <param name="literals"></param>
     public void AddSoft(ulong cost, params ProtoLiteral[] literals) {
-        SoftClauses.Add(new ProtoClause(cost, literals));
+        Soft.Add(new(cost, literals));
     }
 
     /// <summary>
@@ -94,7 +103,7 @@ public class ProtoEncoding {
     /// </summary>
     /// <param name="c"></param>
     public void CommentHard(string c) {
-        HardClauses.Comment(c);
+        Hard.Comment(c);
     }
 
     /// <summary>
@@ -102,6 +111,17 @@ public class ProtoEncoding {
     /// </summary>
     /// <param name="c"></param>
     public void CommentSoft(string c) {
-        SoftClauses.Comment(c);
+        Soft.Comment(c);
     }
+
+    public void AddClause(Clause<ProtoLiteral> clause) {
+        if (clause.IsHard) {
+            Hard.Add(clause);
+        } else {
+            Soft.Add(clause);
+        }
+    }
+
+    public string CNFClauseFormat(Clause<ProtoLiteral> clause, ulong top) => $"{string.Join(" ", clause.Literals.Select(l => l.GetDisplayString()))}";
+    public string WCNFClauseFormat(Clause<ProtoLiteral> clause, ulong top) => $"{(clause.IsHard ? "HARD" : $"SOFT {clause.Cost}")}: {string.Join(" ", clause.Literals.Select(l => l.GetDisplayString()))}";
 }

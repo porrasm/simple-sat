@@ -19,6 +19,7 @@ public struct ProtoLiteral {
 
     public bool IsNegation => (data & NEGATION_MASK) != 0;
     public int Variable => data & VARIABLE_MASK;
+    public string? Name { get; set; }
     #endregion
 
     /// <summary>
@@ -55,6 +56,16 @@ public struct ProtoLiteral {
         }
         this.data = (byte)variable;
         this.Literal = literalIndex;
+        Name = null;
+    }
+
+    public ProtoLiteral Named(string name, params int[] indices) {
+        if (indices.Length == 0) {
+            Name = name;
+            return this;
+        }
+        Name = $"{name}[{string.Join(", ", indices)}]";
+        return this;
     }
 
     public override bool Equals(object? obj) {
@@ -65,6 +76,10 @@ public struct ProtoLiteral {
 
     public override int GetHashCode() {
         return HashCode.Combine(Literal, Variable);
+    }
+
+    public string GetDisplayString() {
+        return Name == null ? ToString() : $"{(IsNegation ? "-" : "")}{Name}";
     }
 
     public override string ToString() => $"({Variable}, {Literal}, neg=${IsNegation})";

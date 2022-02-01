@@ -10,31 +10,31 @@ namespace SimpleSAT.Encoding;
 /// <summary>
 /// The encoding of some problem instance contains all of its hard and soft clauses. 
 /// </summary>
-public class SATEncoding {
+public class SATEncoding : IEncoding<int> {
     #region fields
     public int LiteralCount { get; private set; }
 
-    private List<string> comments = new();
+    public List<string> Comments { get; } = new();
 
-    private ClauseCollection<Clause> hardClauses = new();
-    private ClauseCollection<Clause> softClauses = new();
+    public ClauseCollection<int> Hard { get; } = new();
+    public ClauseCollection<int> Soft { get; } = new();
 
-    public int ClauseCount => hardClauses.Count + softClauses.Count;
-    public int HardCount => hardClauses.Count;
-    public int SoftCount => softClauses.Count;
+    public int ClauseCount => Hard.Count + Soft.Count;
+    public int HardCount => Hard.Count;
+    public int SoftCount => Soft.Count;
     #endregion
 
     public SATEncoding() { }
     
     public SATEncoding(ProtoEncoding proto, ProtoLiteralTranslator translator) {
-        hardClauses = ClauseCollection<Clause>.FromPrevious(proto.HardClauses);
-        softClauses = ClauseCollection<Clause>.FromPrevious(proto.SoftClauses);
+        Hard = ClauseCollection<int>.FromPrevious(proto.Hard);
+        Soft = ClauseCollection<int>.FromPrevious(proto.Soft);
 
-        foreach (var hard in proto.HardClauses.Clauses()) {
-            hardClauses.Add(translator.TranslateClause(hard));
+        foreach (var hard in proto.Hard.Clauses()) {
+            AddClause(translator.TranslateClause(hard));
         }
-        foreach (var soft in proto.SoftClauses.Clauses()) {
-            softClauses.Add(translator.TranslateClause(soft));
+        foreach (var soft in proto.Soft.Clauses()) {
+            AddClause(translator.TranslateClause(soft));
         }
     }
 
@@ -46,7 +46,7 @@ public class SATEncoding {
         if (comment.Contains("\n")) {
             throw new Exception("Comments cannot contain line breaks");
         }
-        comments.Add(comment);
+        Comments.Add(comment);
     }
 
     /// <summary>
@@ -64,14 +64,14 @@ public class SATEncoding {
     /// </summary>
     /// <param name="literals">Literals of the clause</param>
     public void AddHard(params int[] literals) {
-        AddClause(new Clause(0, literals));
+        AddClause(new Clause<int>(0, literals));
     }
 
     /// <summary>
     /// Add a comment line before the next hard clause.
     /// </summary>
     public void CommentHard(string comment) {
-        hardClauses.Comment(comment);
+        Hard.Comment(comment);
     }
 
     /// <summary>
@@ -79,22 +79,22 @@ public class SATEncoding {
     /// </summary>
     /// <param name="literals">Literals of the clause</param>
     public void AddSoft(ulong cost, params int[] literals) {
-        AddClause(new Clause(cost, literals));
+        AddClause(new Clause<int>(cost, literals));
     }
 
     /// <summary>
     /// Add a comment line before the next soft clause.
     /// </summary>
     public void CommentSoft(string comment) {
-        softClauses.Comment(comment);
+        Soft.Comment(comment);
     }
 
     /// <summary>
     /// Add a collection of clauses. Each literal under the maximum literal must be present in at least one clause. Otherwise the solver process might fail or provide incorrect results.
     /// </summary>
     /// <param name="clauses"></param>
-    public void AddClauses(IEnumerable<Clause> clauses) {
-        foreach (Clause c in clauses) {
+    public void AddClauses(IEnumerable<Clause<int>> clauses) {
+        foreach (Clause<int> c in clauses) {
             AddClause(c);
         }
     }
@@ -104,7 +104,7 @@ public class SATEncoding {
     /// </summary>
     /// <param name="clause"></param>
     /// <exception cref="Exception">Clause contained invalid literals</exception>
-    public void AddClause(Clause clause) {
+    public void AddClause(Clause<int> clause) {
         foreach (int literal in clause.Literals) {
             if (literal == 0) {
                 throw new Exception("Clause literal cannot be 0");
@@ -114,76 +114,24 @@ public class SATEncoding {
             }
         }
         if (clause.IsHard) {
-            hardClauses.Add(clause);
+            Hard.Add(clause);
         } else {
-            softClauses.Add(clause);
+            Soft.Add(clause);
         }
     }
     #endregion
 
     #region cnf
+    public string CNFClauseFormat(Clause<int> clause, ulong top) => CNF.CNFClauseLine(clause.Literals);
+    public string WCNFClauseFormat(Clause<int> clause, ulong top) => CNF.WCNFClauseLine(clause.Literals, clause.IsHard ? top : clause.Cost);
+
     /// <summary>
-    /// Converts the encoding into a SAT solver compatible CNF or WNCF format.
+    /// Returns the index of the topmost literal + 1
     /// </summary>
-    /// <param name="format"></param>
-    /// <param name="file"></param>
-    public void ConvertToCNF(SATFormat format, string file) {
-        if (format == SATFormat.CNF_SAT) {
-            ConvertToCNF(file);
-        } else {
-            ConvertToWCNF(file);
-        }
-    }
-
-    private void ConvertToCNF(string file) {
-        if (softClauses.Count > 0) {
-            throw new Exception("Can't convert to CNF if there are soft clauses. Convert to MaxSAT WCNF form instead.");
-        }
-
-        File.Delete(file);
-
-        using StreamWriter sw = new StreamWriter(file);
-
-        foreach (string comment in comments) {
-            sw.WriteLine(SATLines.CommentLine(comment));
-        }
-
-        sw.WriteLine(SATLines.CNFProblemLine(LiteralCount, HardCount));
-        sw.WriteLine(SATLines.CommentLine("Hard clauses"));
-
-        foreach (string clause in hardClauses.SATLines(c => SATLines.CNFClauseLine(c.Literals))) {
-            sw.WriteLine(clause);
-        }
-    }
-
-    private void ConvertToWCNF(string file) {
-        ulong top = GetTop();
-
-        File.Delete(file);
-
-        using StreamWriter sw = new StreamWriter(file);
-
-        foreach (string comment in comments) {
-            sw.WriteLine(SATLines.CommentLine(comment));
-        }
-
-        sw.WriteLine(SATLines.WCNFProblemLine(LiteralCount, ClauseCount, top));
-        sw.WriteLine(SATLines.CommentLine("Hard clauses"));
-
-        foreach (string clause in hardClauses.SATLines(c => SATLines.WCNFClauseLine(c.Literals, top))) {
-            sw.WriteLine(clause);
-        }
-
-        sw.WriteLine(SATLines.CommentLine("Soft clauses"));
-
-        foreach (string clause in softClauses.SATLines(c => SATLines.WCNFClauseLine(c.Literals, c.Cost))) {
-            sw.WriteLine(clause);
-        }
-    }
-
-    private ulong GetTop() {
+    /// <returns></returns>
+    public ulong GetIndexAfterTop() {
         ulong top = 0;
-        foreach (Clause clause in softClauses.Clauses()) {
+        foreach (Clause<int> clause in Soft.Clauses()) {
             top += clause.Cost;
         }
         return top + 1;

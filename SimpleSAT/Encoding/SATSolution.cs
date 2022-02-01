@@ -30,6 +30,7 @@ public class SATSolution {
     /// </summary>
     /// <param name="solverOutput">The process STDOUT of the SAT solver.</param>
     public SATSolution(SATFormat format, string solverOutput) {
+        Format = format;
         ParseLines(solverOutput, out string solution, out string valuesRow);
         Solution = solution switch {
             "OPTIMUM FOUND" => Status.OptimumFound,

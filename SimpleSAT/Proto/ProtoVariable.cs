@@ -38,6 +38,8 @@ public class ProtoVariable {
             return lit;
         }
     }
+
+    public ProtoLiteral Named(string name, int dim0) => this[dim0].Named(name, dim0);
 }
 
 /// <summary>
@@ -57,7 +59,7 @@ public class ProtoVariable2D {
     /// <param name="encoding"></param>
     /// <param name="dim1Size">The maximum size of the last dimension</param>
     /// <param name="symmetric">If set to true, the variable will be interpreted as symmetric so the index [0, 1] gives the same result as [1, 0].</param>
-    public ProtoVariable2D(ProtoEncoding encoding, int dim1Size, bool symmetric = false) {
+    public ProtoVariable2D(ProtoEncoding encoding, int dim1Size, bool symmetric = false, string? name = null) {
         this.encoding = encoding;
         this.variable = encoding.CreateNewVariable();
         this.dim1Size = dim1Size;
@@ -78,6 +80,8 @@ public class ProtoVariable2D {
             return lit;
         }
     }
+
+    public ProtoLiteral Named(string name, int dim0, int dim1) => this[dim0, dim1].Named(name, dim0, dim1);
 
     private void FixIndices(ref int dim0, ref int dim1) {
         int dim0s = dim0;
@@ -141,6 +145,8 @@ public class ProtoVariable3D {
             return lit;
         }
     }
+
+    public ProtoLiteral Named(string name, int dim0, int dim1, int dim2) => this[dim0, dim1, dim2].Named(name, dim0, dim1, dim2);
 
     /// <summary>
     /// Destructures the indices of this variable

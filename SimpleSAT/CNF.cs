@@ -10,7 +10,7 @@ namespace SimpleSAT;
 /// <summary>
 /// This class can generate CNF or WCNF format compatible lines
 /// </summary>
-public static class SATLines {
+public static class CNF {
     public static string CNFClauseLine(int[] clause) {
         return $"{string.Join(" ", clause)} 0";
     }
@@ -28,4 +28,6 @@ public static class SATLines {
     public static string CommentLine(string comment) {
         return $"c {comment}";
     }
+
+
 }

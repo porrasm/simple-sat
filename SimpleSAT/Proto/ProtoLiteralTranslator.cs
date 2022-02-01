@@ -47,6 +47,15 @@ public class ProtoLiteralTranslator {
     /// <param name="key"></param>
     /// <param name="value"></param>
     public void Add(ProtoLiteral key, int value) {
+        if (value <= 0) {
+            throw new Exception("Value must always be greater than or equal to 1");
+        }
+        if (key.IsNegation) {
+            throw new Exception("Literals to add cannot be negations");
+        }
+        if (key.Literal < 0) {
+            throw new Exception("Key literal cannot be negative");
+        }
         dict.Add(key, value);
         revDict.Add(value, key);
     }
@@ -63,8 +72,8 @@ public class ProtoLiteralTranslator {
     /// </summary>
     /// <param name="clause"></param>
     /// <returns></returns>
-    public Clause TranslateClause(ProtoClause clause) {
-        return new Clause(clause.Cost, clause.Literals.Select(lit => GetVAssignment(lit)).ToArray());
+    public Clause<int> TranslateClause(Clause<ProtoLiteral> clause) {
+        return new Clause<int>(clause.Cost, clause.Literals.Select(lit => GetVAssignment(lit)).ToArray());
     }
 
     public override string ToString() {
