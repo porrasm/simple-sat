@@ -15,10 +15,8 @@ The library also provides a more high level encoder (SimpleSAT.Proto.ProtoEncode
 
 The package also contains various tools which can help you debug your encoding. For example the CNFWriter class can be used to write a "human readable" CNF file. Comments can be added to describe clauses and each literal can be assigned an arbitrary name which will appear in the readable CNF form instead of a pure integer.
 
+The package also supports solving CNF files using a standardize SAT or MaxSAT solver (e.g. Kissat or MaxHS). You can use the SimpleSAT.SATSolver class to solve CNF files using a path to the SAT solver binary (or you can pass a process instead). The SAT solver process will then be run and it's outut is automatically parsed if the solver ran succesfully.
+
 ## Notes
 
 This package is not the most efficient encoder but the running time is dominated by the SAT solver so a slighly inefficient encoder will not cause any noticeable performance impacts. This package is good for experimenting with new encoding schemes and/or debugging encodings as well as for learning purposes for beginners.
-
-## Upcoming features
-
-- SAT solver support: in the future you can give a SAT solver binary as a parameter and use this library to solve your encodings directly using the given solver. A solution is returned right away with other useful information about the encodings.
