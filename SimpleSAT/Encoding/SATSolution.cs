@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleSAT.Proto;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -49,6 +50,16 @@ public class SATSolution {
             bool a = valuesRow[i] == '1';
             Assignments[i] = a;
         }
+    }
+
+    public ProtoLiteral[] AsProtoLiterals(ProtoLiteralTranslator translator) {
+        ProtoLiteral[] literals = new ProtoLiteral[Assignments.Length];
+        for (int i = 0; i < Assignments.Length; i++) {
+            // 1 indexed results
+            ProtoLiteral lit = translator.GetK(i + 1);
+            literals[i] = Assignments[i] ? lit : lit.Neg;
+        }
+        return literals;
     }
 
     private void ParseLines(string solverOutput, out string solution, out string assignments) {

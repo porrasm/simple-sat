@@ -59,12 +59,15 @@ public struct ProtoLiteral {
         Name = null;
     }
 
-    public ProtoLiteral Named(string name, params int[] indices) {
+    public ProtoLiteral Named(string? name, params object[] indices) {
+        if (name == null || name.Length == 0) {
+            return this;
+        }
         if (indices.Length == 0) {
             Name = name;
             return this;
         }
-        Name = $"{name}[{string.Join(", ", indices)}]";
+        Name = $"{name}[{string.Join(", ", indices.Select(s => s.ToString()))}]";
         return this;
     }
 
@@ -78,8 +81,8 @@ public struct ProtoLiteral {
         return HashCode.Combine(Literal, Variable);
     }
 
-    public string GetDisplayString() {
-        return Name == null ? ToString() : $"{(IsNegation ? "-" : "")}{Name}";
+    public string GetDisplayString(bool positiveSign = false) {
+        return Name == null ? ToString() : $"{(IsNegation ? "-" : (positiveSign ? "+" : ""))}{Name}";
     }
 
     public override string ToString() => $"({Variable}, {Literal}, neg=${IsNegation})";

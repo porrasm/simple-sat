@@ -20,16 +20,36 @@ public class ProtoLiteralTranslator {
     /// Generates a translation from a <see cref="ProtoEncoding"/>
     /// </summary>
     /// <param name="encoding"></param>
-    public ProtoLiteralTranslator(ProtoEncoding encoding) {
+    /// <param name="sortLiteralsByIndex">Sorts the literals based on their index value. Can cause significant performance reduction but makes debugging easier.</param>
+    public ProtoLiteralTranslator(ProtoEncoding encoding, bool sortLiteralsByIndex = false) {
         dict = new();
         revDict = new();
 
-        int i = 1;
+        List<ProtoLiteral> literals = new();
         foreach (var variable in encoding.GetVariables()) {
             foreach (ProtoLiteral lit in variable) {
-                Add(lit, i);
-                i++;
+                literals.Add(lit);
             }
+        }
+
+        if (sortLiteralsByIndex) {
+            literals.Sort((a, b) => {
+                int varComp  = a.Variable.CompareTo(b.Variable);
+                if (varComp != 0) {
+                    return varComp;
+                }
+                return a.Literal.CompareTo(b.Literal);
+            });
+        }
+
+        AddLiterals(literals);  
+    }
+
+    private void AddLiterals(List<ProtoLiteral> literals) {
+        int i = 1;
+        foreach (ProtoLiteral lit in literals) {
+            Add(lit, i);
+            i++;
         }
     }
 

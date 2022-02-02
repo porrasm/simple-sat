@@ -38,8 +38,6 @@ public class ProtoVariable {
             return lit;
         }
     }
-
-    public ProtoLiteral Named(string name, int dim0) => this[dim0].Named(name, dim0);
 }
 
 /// <summary>
@@ -51,6 +49,7 @@ public class ProtoVariable2D {
     public byte variable { get; }
     private int dim1Size;
     private bool symmetric;
+    public string? Name { get; }
     #endregion
 
     /// <summary>
@@ -64,6 +63,7 @@ public class ProtoVariable2D {
         this.variable = encoding.CreateNewVariable();
         this.dim1Size = dim1Size;
         this.symmetric = symmetric;
+        Name = name;
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class ProtoVariable2D {
             if (symmetric) {
                 FixIndices(ref dim0, ref dim1);
             }
-            ProtoLiteral lit = new ProtoLiteral(variable, (dim0 * dim1Size) + dim1);
+            ProtoLiteral lit = new ProtoLiteral(variable, (dim0 * dim1Size) + dim1).Named(Name, dim0, dim1);
             encoding.Register(lit);
             return lit;
         }
@@ -119,6 +119,8 @@ public class ProtoVariable3D {
     private ProtoEncoding encoding;
     public byte variable { get; }
     private int dim1Size, dim2Size;
+
+    public string? Name { get; }
     #endregion
 
     /// <summary>
@@ -127,11 +129,12 @@ public class ProtoVariable3D {
     /// <param name="encoding"></param>
     /// <param name="dim1Size">The max size of the 2nd dimension</param>
     /// <param name="dim2Size">The max size of the 3rd dimension</param>
-    public ProtoVariable3D(ProtoEncoding encoding, int dim1Size, int dim2Size) {
+    public ProtoVariable3D(ProtoEncoding encoding, int dim1Size, int dim2Size, string? name = null) {
         this.encoding = encoding;
         this.variable = encoding.CreateNewVariable();
         this.dim1Size = dim1Size;
         this.dim2Size = dim2Size;
+        Name = name;
     }
 
     /// <summary>
@@ -140,13 +143,11 @@ public class ProtoVariable3D {
     /// <returns></returns>
     public ProtoLiteral this[int dim0, int dim1, int dim2] {
         get {
-            ProtoLiteral lit = new ProtoLiteral(variable, (dim0 * dim1Size * dim2Size) + (dim1 * dim2Size) + dim2);
+            ProtoLiteral lit = new ProtoLiteral(variable, (dim0 * dim1Size * dim2Size) + (dim1 * dim2Size) + dim2).Named(Name, dim0, dim1, dim2);
             encoding.Register(lit);
             return lit;
         }
     }
-
-    public ProtoLiteral Named(string name, int dim0, int dim1, int dim2) => this[dim0, dim1, dim2].Named(name, dim0, dim1, dim2);
 
     /// <summary>
     /// Destructures the indices of this variable

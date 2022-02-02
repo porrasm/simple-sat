@@ -26,7 +26,7 @@ public class SATEncoding : IEncoding<int> {
 
     public SATEncoding() { }
     
-    public SATEncoding(ProtoEncoding proto, ProtoLiteralTranslator translator) {
+    public SATEncoding(IEncoding<ProtoLiteral> proto, ProtoLiteralTranslator translator) {
         Hard = ClauseCollection<int>.FromPrevious(proto.Hard);
         Soft = ClauseCollection<int>.FromPrevious(proto.Soft);
 

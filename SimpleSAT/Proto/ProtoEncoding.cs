@@ -123,5 +123,5 @@ public class ProtoEncoding : IEncoding<ProtoLiteral> {
     }
 
     public string CNFClauseFormat(Clause<ProtoLiteral> clause, ulong top) => $"{string.Join(" ", clause.Literals.Select(l => l.GetDisplayString()))}";
-    public string WCNFClauseFormat(Clause<ProtoLiteral> clause, ulong top) => $"{(clause.IsHard ? "HARD" : $"SOFT {clause.Cost}")}: {string.Join(" ", clause.Literals.Select(l => l.GetDisplayString()))}";
+    public string WCNFClauseFormat(Clause<ProtoLiteral> clause, ulong top) => $"{(clause.IsHard ? "H" : $"S {clause.Cost}")}: {string.Join(" ", clause.Literals.Select(l => l.GetDisplayString()))}";
 }
