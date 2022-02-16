@@ -49,7 +49,7 @@ public class ProtoVariable2D {
     public byte variable { get; }
     private int dim1Size;
     private bool symmetric;
-    public string? Name { get; }
+    public string? Name { get; set; }
     #endregion
 
     /// <summary>
@@ -120,7 +120,7 @@ public class ProtoVariable3D {
     public byte variable { get; }
     private int dim1Size, dim2Size;
 
-    public string? Name { get; }
+    public string? Name { get; set; }
     #endregion
 
     /// <summary>

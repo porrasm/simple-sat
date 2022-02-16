@@ -71,15 +71,15 @@ public class SATSolution {
                 continue;
             }
 
-            if (line[0] == 's') {
+            if (line.StartsWith("s ")) {
                 solution = line.Substring(2);
                 continue;
             }
-            if (line[0] == 'v') {
+            if (line.StartsWith("v ")) {
                 assignments = line.Substring(2);
                 continue;
             }
-            if (Format == SATFormat.WCNF_MAXSAT && line[0] == 'o') {
+            if (Format == SATFormat.WCNF_MAXSAT && line.StartsWith("o ")) {
                 Cost = ulong.Parse(line.Substring(2));
                 continue;
             }

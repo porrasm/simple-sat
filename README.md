@@ -28,7 +28,7 @@ The package also supports solving CNF files using a standardize SAT or MaxSAT so
 
 ### Demonstration
 
-Below are some demonstration of what the readable CNF files look like. A [transitive encoding](https://github.com/porrasm/correlation-clustering-maxsat/blob/main/correlation-clustering-encoder/Encoder/Implementations/TransitiveEncoding.cs) for the correlation clustering problem was used here with an input matrix which had 4 different data points.
+Below are some demonstration of what the readable CNF files look like. The [transitive encoding](https://github.com/porrasm/correlation-clustering-maxsat/blob/main/correlation-clustering-encoder/Encoder/Implementations/TransitiveEncoding.cs) for the correlation clustering problem was used here with an input matrix which had 4 different data points.
 
 #### Regular WCNF file
 ```
