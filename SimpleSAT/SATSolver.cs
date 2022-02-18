@@ -57,14 +57,16 @@ public static class SATSolver {
         }
 
         string? solverOutput = BenchProcess(solverProcess, timeLimitSeconds, out long realTimeMs, out bool graceful);
+
+        Times times = timeOutputPath == null ? new Times(realTimeMs) : ParseUserTime(timeOutputPath);
+        if (timeOutputPath != null && File.Exists(timeOutputPath)) {
+            File.Delete(timeOutputPath);
+        }
+
         if (!graceful) {
             return new SolverResult(solverOutput, SolverResult.ProcessStatus.SolverTimeout, new Times(-1), graceful, null);
         }
 
-        Times times = timeOutputPath == null ? new Times(realTimeMs) : ParseUserTime(timeOutputPath);
-        if (timeOutputPath != null && File.Exists(timeOutputPath)) { 
-            File.Delete(timeOutputPath);
-        }
 
         if (solverOutput != null) {
             try {
