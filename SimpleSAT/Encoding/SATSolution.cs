@@ -66,6 +66,8 @@ public class SATSolution {
         solution = "";
         assignments = "";
 
+        bool costFound = false;
+
         foreach (string line in solverOutput.Split('\n')) {
             if (line.Length == 0) {
                 continue;
@@ -80,12 +82,18 @@ public class SATSolution {
                 continue;
             }
             if (Format == SATFormat.WCNF_MAXSAT && line.StartsWith("o ")) {
-                Cost = ulong.Parse(line.Substring(2));
+                ulong cost = ulong.Parse(line.Substring(2));
+                if (costFound) {
+                    Cost = Math.Min(Cost, cost);
+                } else {
+                    Cost = cost;
+                    costFound = true;
+                }
                 continue;
             }
         }
 
-        if (solverOutput.Length == 0 || solution.Length == 0) {
+        if (solverOutput.Length == 0 || solution.Length == 0 || !costFound) {
             throw new Exception("Invalid solution");
         }
     }

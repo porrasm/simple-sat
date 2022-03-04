@@ -11,6 +11,13 @@ namespace SimpleSAT;
 
 public static class SATSolver {
     /// <summary>
+    /// Directory where to save temporary files
+    /// </summary>
+    public static string WorkingDirectory { get; set; } = "./";
+
+    private static string GetFile(string name) => Path.Combine(WorkingDirectory, name);
+
+    /// <summary>
     /// Solve a SAT encoding with a given SAT solver. The solver only accepts the new solution line format.
     /// </summary>
     /// <param name="solverBinaryPath">The path to the binary of the SAT solver</param>
@@ -32,12 +39,12 @@ public static class SATSolver {
     /// <param name="timeLimitSeconds">Solver process time limit in seconds</param>
     /// <param name="additionalArguments">Additional flags to pass to the solver</param>
     /// <returns></returns>
-    public static SolverResult SolveWithTimeCommand(string solverBinaryPath, string inputCnfFile, SATFormat format, int timeLimitSeconds = 0, string? additionalArguments = "", string timePath = "/usr/bin/time", string? timeOutputPath = null) {
+    public static SolverResult SolveWithTimeCommand(string solverBinaryPath, string inputCnfFile, SATFormat format, int timeLimitSeconds = 0, string? additionalArguments = "", string timeBinPath = "/usr/bin/time", string? timeOutputPath = null) {
         timeOutputPath = timeOutputPath ?? $"time_output_{Environment.TickCount64}.out";
-        if (File.Exists(timeOutputPath)) {
+        if (File.Exists(GetFile(timeOutputPath))) {
             throw new Exception("Time output file exists: " + timeOutputPath);
         }
-        return ExecuteProcess(GetTimeSolverProcess(solverBinaryPath, inputCnfFile, additionalArguments, timePath, timeOutputPath), format, timeLimitSeconds, timeOutputPath);
+        return ExecuteProcess(GetTimeSolverProcess(solverBinaryPath, inputCnfFile, additionalArguments, timeBinPath, timeOutputPath), format, timeLimitSeconds, timeOutputPath);
     }
 
     /// <summary>
@@ -48,42 +55,46 @@ public static class SATSolver {
     /// <param name="timeLimitSeconds">Solver process time limit in seconds</param>
     /// <returns></returns>
     public static SolverResult SolveWithProcess(Process solverProcess, SATFormat format, int timeLimitSeconds = 0) {
-        return ExecuteProcess(solverProcess, format, timeLimitSeconds, null);
+        return ExecuteProcess(new ProcessContainer(solverProcess), format, timeLimitSeconds, null);
     }
 
-    private static SolverResult ExecuteProcess(Process solverProcess, SATFormat format, int timeLimitSeconds, string? timeOutputPath) {
-        if (!solverProcess.StartInfo.RedirectStandardOutput) {
+    private static SolverResult ExecuteProcess(ProcessContainer solverProcess, SATFormat format, int timeLimitSeconds, string? timeOutputPath) {
+        if (!solverProcess.Process.StartInfo.RedirectStandardOutput) {
             throw new Exception("The process to use must redirect the standard output");
         }
 
         string? solverOutput = BenchProcess(solverProcess, timeLimitSeconds, out long realTimeMs, out bool graceful);
+        string? timeOutput = null;
 
-        Times times = timeOutputPath == null ? new Times(realTimeMs) : ParseUserTime(timeOutputPath);
-        if (timeOutputPath != null && File.Exists(timeOutputPath)) {
-            File.Delete(timeOutputPath);
+        Console.WriteLine("Solver output:");
+        Console.WriteLine(solverOutput);
+
+        if (timeOutputPath != null && File.Exists(GetFile(timeOutputPath))) {
+            timeOutput = File.ReadAllText(GetFile(timeOutputPath));
+            File.Delete(GetFile(timeOutputPath));
         }
+
+        Times times = timeOutput == null ? new Times(realTimeMs) : ParseUserTime(timeOutput);
 
         if (!graceful) {
             return new SolverResult(solverOutput, SolverResult.ProcessStatus.SolverTimeout, new Times(-1), graceful, null);
         }
 
-
         if (solverOutput != null) {
             try {
+                Console.WriteLine("Parsing solver output...");
                 SATSolution solution = new SATSolution(format, solverOutput);
                 return new SolverResult(solverOutput, SolverResult.ProcessStatus.Succes, times, true, solution);
-            } catch (Exception) { }
+            } catch (Exception e) {
+                Console.WriteLine("Error parsing solver output: " + e);
+            }
         }
 
         return new SolverResult(solverOutput, SolverResult.ProcessStatus.ErrorParsingOutput, times, true, null);
     }
 
-    private static Times ParseUserTime(string outputFile) {
-        if (!File.Exists(outputFile)) {
-            return new Times(-1);
-        }
-
-        string[] output = File.ReadAllLines(outputFile);
+    private static Times ParseUserTime(string outputTxt) {
+        string[] output = outputTxt.Split('\n');
 
         long real = -1;
         long user = -1;
@@ -110,45 +121,73 @@ public static class SATSolver {
         time = (long)(val * 1000);
     }
 
-    private static string? BenchProcess(Process p, int timeLimitSeconds, out long elapsedRealTime, out bool gracefulExit) {
+    private static string? BenchProcess(ProcessContainer p, int timeLimitSeconds, out long elapsedRealTime, out bool gracefulExit) {
         Stopwatch watch = Stopwatch.StartNew();
-        p.Start();
+        p.Process.Start();
 
         if (timeLimitSeconds > 0) {
-            gracefulExit = p.WaitForExit(timeLimitSeconds * 1000);
+            gracefulExit = p.Process.WaitForExit(timeLimitSeconds * 1000);
             watch.Stop();
             if (!gracefulExit) {
-                p.Kill();
+                p.Process.Kill();
             }
         } else {
-            p.WaitForExit();
+            p.Process.WaitForExit();
             watch.Stop();
             gracefulExit = true;
         }
 
         elapsedRealTime = watch.ElapsedMilliseconds;
 
-        if (!gracefulExit || p.ExitCode != 0) {
+        // Pacose
+        if (!gracefulExit) {// || p.Process.ExitCode != 0) {
             return null;
         }
 
-        return p.StandardOutput.ReadToEnd();
+        string output = p.Process.StandardOutput.ReadToEnd();
+        p.Dispose();
+
+        return output;
     }
 
-    private static Process GetSolverProcess(string solverBinaryPath, string inputCnfFile, string? arguments) {
+    private static ProcessContainer GetSolverProcess(string solverBinaryPath, string inputCnfFile, string? arguments) {
         Process solverProcess = new Process();
         solverProcess.StartInfo.FileName = solverBinaryPath;
         solverProcess.StartInfo.Arguments = $"{inputCnfFile} {arguments}";
         solverProcess.StartInfo.RedirectStandardOutput = true;
-        return solverProcess;
+        return new ProcessContainer(solverProcess);
     }
 
-    private static Process GetTimeSolverProcess(string solverBinaryPath, string inputCnfFile, string? arguments, string timePath, string timeOutputPath) {
+    private static ProcessContainer GetTimeSolverProcess(string solverBinaryPath, string inputCnfFile, string? arguments, string timeBinPath, string timeOutputPath) {
+        if (!File.Exists(solverBinaryPath)) {
+            throw new Exception("Could not find solver: " + solverBinaryPath);
+        }
+
         Process solverProcess = new Process();
-        solverProcess.StartInfo.FileName = timePath;
-        solverProcess.StartInfo.Arguments = $"-p -o {timeOutputPath} {solverBinaryPath} {inputCnfFile} {arguments}";
+        solverProcess.StartInfo.FileName = timeBinPath;
+        solverProcess.StartInfo.Arguments = $"-p -o {GetFile(timeOutputPath)} {solverBinaryPath} {inputCnfFile} {arguments}";
+        Console.WriteLine("Args: " + solverProcess.StartInfo.Arguments);
         solverProcess.StartInfo.RedirectStandardOutput = true;
-        return solverProcess;
+        return new ProcessContainer(solverProcess);
+    }
+}
+
+internal class ProcessContainer : IDisposable {
+    #region fields
+    public Process Process { get; }
+    public string? BashInstructionFile { get; }
+    #endregion
+
+    public ProcessContainer(Process process, string? file = null) {
+        Process = process;
+        BashInstructionFile = file;
+    }
+
+    public void Dispose() {
+        Process.Dispose();
+        if (BashInstructionFile != null) {
+            File.Delete(BashInstructionFile);
+        }
     }
 }
 
