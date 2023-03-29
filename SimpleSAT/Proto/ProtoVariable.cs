@@ -162,3 +162,116 @@ public class ProtoVariable3D {
         dim2 = literalIndex % dim2Size;
     }
 }
+
+public interface IProtoVariableSet {
+    public ProtoLiteral this[params int[] indices] { get; }
+    public ProtoLiteral Named(string name, params int[] indices);
+    public string? Name { get; }
+    public byte Variable { get; }
+    public int[] GetParameters(int literalIndex);
+}
+
+/// <summary>
+/// An n-dimensional representation of auxiliary SAT variables
+/// </summary>
+public class ProtoVariableSet : IProtoVariableSet {
+    #region fields
+    private ProtoEncoding encoding;
+    public byte Variable { get; }
+    public string? Name { get; set; }
+
+    private struct IntArray {
+        public int[] array;
+        public int hash;
+
+        public IntArray(int[] array) {
+            this.array = array;
+            hash = 0;
+            for (int i = 0; i < array.Length; i++) {
+                hash = hash * 31 + array[i];
+            }
+        }
+
+        public override int GetHashCode() => hash;
+        public override bool Equals(object? obj) {
+            if (obj is IntArray other) {
+                if (other.array.Length != array.Length) {
+                    return false;
+                }
+                for (int i = 0; i < array.Length; i++) {
+                    if (other.array[i] != array[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private int nextIndex = 0;
+
+    private Dictionary<IntArray, int> indexCache = new Dictionary<IntArray, int>();
+    private Dictionary<int, int[]> reverseIndexCache = new Dictionary<int, int[]>();
+    #endregion
+
+    /// <summary>
+    /// Create a new auxiliary variable set.
+    /// </summary>
+    /// <param name="encoding"></param>
+    public ProtoVariableSet(ProtoEncoding encoding, string? name = null) {
+        this.encoding = encoding;
+        this.Variable = encoding.CreateNewVariable();
+        Name = name;
+    }
+
+    /// <summary>
+    /// Returns the literal and registers it to the encoding
+    /// </summary>
+    /// <returns></returns>
+    public ProtoLiteral this[params int[] indices] {
+        get {
+            if (!indexCache.TryGetValue(new IntArray(indices), out int index)) {
+                index = nextIndex++;
+                indexCache.Add(new IntArray(indices), index);
+                reverseIndexCache.Add(index, indices);
+            }
+
+            ProtoLiteral lit = new ProtoLiteral(Variable, index).Named(Name, indices);
+            encoding.Register(lit);
+            return lit;
+        }
+    }
+
+    /// <summary>
+    /// Returns the literal with a name and registers it to the encoding
+    /// </summary>
+    public ProtoLiteral Named(string name, params int[] indices) => this[indices].Named(name, indices);
+
+    /// <summary>
+    /// Destructures the indices of this variable
+    /// </summary>
+    /// <param name="literalIndex"></param>
+    public int[] GetParameters(int literalIndex) => reverseIndexCache[literalIndex];
+
+    public IProtoVariableSet GetPrefixedSubset(params int[] prefix) => new SubProtoVariableSet(this, prefix);
+}
+
+public class SubProtoVariableSet : IProtoVariableSet {
+    #region fields
+    private int[] prefix;
+    private ProtoVariableSet variableSet;
+    public string? Name => variableSet.Name;
+
+    public byte Variable => variableSet.Variable;
+    #endregion
+
+    public SubProtoVariableSet(ProtoVariableSet variableSet, params int[] prefix) {
+        this.variableSet = variableSet;
+        this.prefix = prefix;
+    }
+
+    public ProtoLiteral this[params int[] indices] => variableSet[prefix.Concat(indices).ToArray()];
+    public ProtoLiteral Named(string name, params int[] indices) => this[indices].Named(name, indices);
+    public int[] GetParameters(int literalIndex) => variableSet.GetParameters(literalIndex).Skip(prefix.Length).ToArray();
+}

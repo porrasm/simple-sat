@@ -66,9 +66,6 @@ public static class SATSolver {
         string? solverOutput = BenchProcess(solverProcess, timeLimitSeconds, out long realTimeMs, out bool graceful);
         string? timeOutput = null;
 
-        Console.WriteLine("Solver output:");
-        Console.WriteLine(solverOutput);
-
         if (timeOutputPath != null && File.Exists(GetFile(timeOutputPath))) {
             timeOutput = File.ReadAllText(GetFile(timeOutputPath));
             File.Delete(GetFile(timeOutputPath));
@@ -82,7 +79,6 @@ public static class SATSolver {
 
         if (solverOutput != null) {
             try {
-                Console.WriteLine("Parsing solver output...");
                 SATSolution solution = new SATSolution(format, solverOutput);
                 return new SolverResult(solverOutput, SolverResult.ProcessStatus.Succes, times, true, solution);
             } catch (Exception e) {
@@ -123,38 +119,49 @@ public static class SATSolver {
 
     private static string? BenchProcess(ProcessContainer p, int timeLimitSeconds, out long elapsedRealTime, out bool gracefulExit) {
         Stopwatch watch = Stopwatch.StartNew();
-        p.Process.Start();
+        string output;
+        gracefulExit = true;
 
-        if (timeLimitSeconds > 0) {
-            gracefulExit = p.Process.WaitForExit(timeLimitSeconds * 1000);
-            watch.Stop();
-            if (!gracefulExit) {
-                p.Process.Kill();
+        try {
+            // Start the process and wait for it to finish
+            p.Process.Start();
+
+            if (timeLimitSeconds != 0) {
+                bool finished = p.Process.WaitForExit(timeLimitSeconds * 1000);
+
+                // If the process didn't finish within the time limit, kill it and record output as error message
+                if (!finished) {
+                    Console.WriteLine("Solver timed out, killing process...");
+                    p.Process.Kill();
+                    output = "Process timed out";
+                    gracefulExit = false;
+                } else {
+                    // Otherwise, record the output as the process's standard output
+                    output = p.Process.StandardOutput.ReadToEnd();
+                }
+            } else {
+                p.Process.WaitForExit();
+
+                // Record the output as the process's standard output
+                output = p.Process.StandardOutput.ReadToEnd();
             }
-        } else {
-            p.Process.WaitForExit();
-            watch.Stop();
-            gracefulExit = true;
+        } catch (Exception ex) {
+            // If any exception occurs, record the output as the error message and set exit status as not graceful
+            output = ex.Message;
+            gracefulExit = false;
         }
 
         elapsedRealTime = watch.ElapsedMilliseconds;
-
-        // Pacose
-        if (!gracefulExit) {// || p.Process.ExitCode != 0) {
-            return null;
-        }
-
-        string output = p.Process.StandardOutput.ReadToEnd();
-        p.Dispose();
-
         return output;
     }
 
     private static ProcessContainer GetSolverProcess(string solverBinaryPath, string inputCnfFile, string? arguments) {
         Process solverProcess = new Process();
+        solverProcess.StartInfo.UseShellExecute = false;
         solverProcess.StartInfo.FileName = solverBinaryPath;
-        solverProcess.StartInfo.Arguments = $"{inputCnfFile} {arguments}";
+        solverProcess.StartInfo.Arguments = $"{arguments} {inputCnfFile}";
         solverProcess.StartInfo.RedirectStandardOutput = true;
+        solverProcess.StartInfo.RedirectStandardError = true;
         return new ProcessContainer(solverProcess);
     }
 
@@ -164,9 +171,9 @@ public static class SATSolver {
         }
 
         Process solverProcess = new Process();
+        solverProcess.StartInfo.UseShellExecute = false;
         solverProcess.StartInfo.FileName = timeBinPath;
-        solverProcess.StartInfo.Arguments = $"-p -o {GetFile(timeOutputPath)} {solverBinaryPath} {inputCnfFile} {arguments}";
-        Console.WriteLine("Args: " + solverProcess.StartInfo.Arguments);
+        solverProcess.StartInfo.Arguments = $"-p -o {GetFile(timeOutputPath)} {solverBinaryPath} {arguments} {inputCnfFile}";
         solverProcess.StartInfo.RedirectStandardOutput = true;
         return new ProcessContainer(solverProcess);
     }

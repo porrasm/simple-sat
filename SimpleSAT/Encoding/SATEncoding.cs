@@ -12,7 +12,7 @@ namespace SimpleSAT.Encoding;
 /// </summary>
 public class SATEncoding : IEncoding<int> {
     #region fields
-    public int LiteralCount { get; private set; }
+    public int VariableCount { get; private set; }
 
     public List<string> Comments { get; } = new();
 
@@ -109,8 +109,9 @@ public class SATEncoding : IEncoding<int> {
             if (literal == 0) {
                 throw new Exception("Clause literal cannot be 0");
             }
-            if (literal > LiteralCount) {
-                LiteralCount = literal;
+            int positiveLiteral = Math.Abs(literal);
+            if (positiveLiteral > VariableCount) {
+                VariableCount = positiveLiteral;
             }
         }
         if (clause.IsHard) {

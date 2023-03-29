@@ -45,6 +45,18 @@ public struct ProtoLiteral {
     }
 
     /// <summary>
+    /// Flips the literal
+    /// </summary>
+    public ProtoLiteral Flip {
+        get {
+            if (IsNegation) {
+                return Pos;
+            }
+            return Neg;
+        }
+    }
+
+    /// <summary>
     /// Creates a new literal
     /// </summary>
     /// <param name="variable">The variable this literal belongs to</param>
@@ -59,7 +71,7 @@ public struct ProtoLiteral {
         Name = null;
     }
 
-    public ProtoLiteral Named(string? name, params object[] indices) {
+    public ProtoLiteral Named(string? name, params int[] indices) {
         if (name == null || name.Length == 0) {
             return this;
         }
